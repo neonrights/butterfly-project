@@ -1,0 +1,6 @@
+Pillow
+pillow-heif
+pillow-avif-plugin
+numpy
+matplotlib
+jupyterlab
