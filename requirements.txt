@@ -4,3 +4,4 @@ pillow-avif-plugin
 numpy
 matplotlib
 jupyterlab
+tqdm
