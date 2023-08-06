@@ -14,11 +14,11 @@ from pillow_heif import register_heif_opener
 logger = logging.getLogger(__name__)
 register_heif_opener()
 
-IMAGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "", "images"))
+IMAGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "images"))
 LEFT_MASK_PATH = os.path.join(IMAGE_DIR, "butterfly-left-mask.png")
 RIGHT_MASK_PATH = os.path.join(IMAGE_DIR, "butterfly-right-mask.png")
 BODY_MASK_PATH = os.path.join(IMAGE_DIR, "butterfly-body-mask.png")
-EXPECTED_SHAPE = (3024, 4032)
+EXPECTED_SHAPE = (4032, 3024)
 
 
 def load_mask(mask_path: str) -> np.array:
@@ -32,7 +32,7 @@ def load_mask(mask_path: str) -> np.array:
 def get_heic_file_names_and_paths(dir_path: str) -> List[Tuple[str, str]]:
     names_and_paths = list()
     for file_name in os.listdir(dir_path):
-        name, ext = os.splitext(file_name)
+        name, ext = os.path.splitext(file_name)
         if ext != ".HEIC":
             continue
         file_path = os.path.join(dir_path, file_name)
@@ -64,8 +64,11 @@ def main(flags: List[str] = None) -> None:
     for heic_name, heic_path in tqdm(get_heic_file_names_and_paths(args.photo_dir), desc="Extracting Images"):
         logger.debug(f"Converting {heic_name}")
         heic_image = Image.open(heic_path)
+        heic_array = np.array(heic_image)
         for mask_name, mask in masks.items():
-            pass  # apply mask, then save to output
+            masked_image = Image.fromarray(heic_array * np.expand_dims(mask, -1))
+            output_path = os.path.join(args.output_dir, f"{heic_name}-{mask_name}.png")
+            masked_image.save(output_path)
 
 
 if __name__ == '__main__':
