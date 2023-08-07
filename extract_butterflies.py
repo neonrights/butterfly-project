@@ -14,10 +14,7 @@ from pillow_heif import register_heif_opener
 logger = logging.getLogger(__name__)
 register_heif_opener()
 
-IMAGE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "images"))
-LEFT_MASK_PATH = os.path.join(IMAGE_DIR, "butterfly-left-mask.png")
-RIGHT_MASK_PATH = os.path.join(IMAGE_DIR, "butterfly-right-mask.png")
-BODY_MASK_PATH = os.path.join(IMAGE_DIR, "butterfly-body-mask.png")
+MASK_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "masks"))
 EXPECTED_SHAPE = (4032, 3024)
 
 
@@ -27,6 +24,18 @@ def load_mask(mask_path: str) -> np.array:
     mask = np.array(img, dtype="bool")
     assert mask.shape == EXPECTED_SHAPE, f"Mask is not expected shape {EXPECTED_SHAPE}, instead {mask.shape}"
     return mask
+
+
+def load_mask_dir(dir_path: str):
+    masks = dict()
+    for file_name in os.listdir(dir_path):
+        mask_name, ext = os.path.splitext(file_name)
+        if not ext == ".png":
+            continue
+        file_path = os.path.join(dir_path, file_name)
+        masks[mask_name] = load_mask(file_path)
+
+    return masks
 
 
 def get_heic_file_names_and_paths(dir_path: str) -> List[Tuple[str, str]]:
@@ -55,11 +64,7 @@ def main(flags: List[str] = None) -> None:
     args = parser.parse_args(flags)
 
     logger.debug("Loading masks")
-    masks = {
-        "left": load_mask(LEFT_MASK_PATH),
-        "right": load_mask(RIGHT_MASK_PATH),
-        "body": load_mask(BODY_MASK_PATH),
-    }
+    masks = load_mask_dir(MASK_DIR)
     os.makedirs(args.output_dir, exist_ok=True)
     for heic_name, heic_path in tqdm(get_heic_file_names_and_paths(args.photo_dir), desc="Extracting Images"):
         logger.debug(f"Converting {heic_name}")
