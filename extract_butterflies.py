@@ -6,6 +6,7 @@ import logging
 import argparse
 from typing import List, Tuple
 
+import PIL
 import numpy as np
 from tqdm import tqdm
 from PIL import Image
@@ -15,14 +16,14 @@ logger = logging.getLogger(__name__)
 register_heif_opener()
 
 MASK_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "masks"))
-EXPECTED_SHAPE = (4032, 3024)
+XR_DIM = (4032, 3024)
 
 
 def load_mask(mask_path: str) -> np.array:
     logger.debug(f"Loading {mask_path}")
     img = Image.open(mask_path)
     mask = np.array(img, dtype="bool")
-    assert mask.shape == EXPECTED_SHAPE, f"Mask is not expected shape {EXPECTED_SHAPE}, instead {mask.shape}"
+    assert mask.shape == XR_DIM, f"Mask is not expected shape {XR_DIM}, instead {mask.shape}"
     return mask
 
 
@@ -38,12 +39,10 @@ def load_mask_dir(dir_path: str):
     return masks
 
 
-def get_heic_file_names_and_paths(dir_path: str) -> List[Tuple[str, str]]:
+def get_file_names_and_paths(dir_path: str) -> List[Tuple[str, str]]:
     names_and_paths = list()
     for file_name in os.listdir(dir_path):
         name, ext = os.path.splitext(file_name)
-        if ext != ".HEIC":
-            continue
         file_path = os.path.join(dir_path, file_name)
         if not os.path.isfile(file_path):
             continue
@@ -66,13 +65,19 @@ def main(flags: List[str] = None) -> None:
     logger.debug("Loading masks")
     masks = load_mask_dir(MASK_DIR)
     os.makedirs(args.output_dir, exist_ok=True)
-    for heic_name, heic_path in tqdm(get_heic_file_names_and_paths(args.photo_dir), desc="Extracting Images"):
-        logger.debug(f"Converting {heic_name}")
-        heic_image = Image.open(heic_path)
-        heic_array = np.array(heic_image)
+    for image_name, image_path in tqdm(get_file_names_and_paths(args.photo_dir), desc="Extracting images"):
+        logger.debug(f"Converting {image_name}")
+        try:
+            image = Image.open(image_path)
+        except PIL.UnidentifiedImageError:
+            logger.warning(f"{image_path} is not a supported PIL file. Skipping")
+            continue
+        image_array = np.array(image)
         for mask_name, mask in masks.items():
-            masked_image = Image.fromarray(heic_array * np.expand_dims(mask, -1))
-            output_path = os.path.join(args.output_dir, f"{heic_name}-{mask_name}.png")
+            if image_array.ndim > 2:
+                mask = np.expand_dims(mask, -1)
+            masked_image = Image.fromarray(image_array * mask)
+            output_path = os.path.join(args.output_dir, f"{image_name}-{mask_name}.png")
             masked_image.save(output_path)
 
 
