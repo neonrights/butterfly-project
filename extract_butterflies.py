@@ -54,6 +54,7 @@ def get_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--photo_dir", type=str, required=True)
     parser.add_argument("--output_dir", type=str, required=True)
+    parser.add_argument("--flip_output", action="store_true", default=False)
 
     return parser
 
@@ -76,8 +77,15 @@ def main(flags: List[str] = None) -> None:
         for mask_name, mask in masks.items():
             if image_array.ndim > 2:
                 mask = np.expand_dims(mask, -1)
-            masked_image = Image.fromarray(image_array * mask)
-            output_path = os.path.join(args.output_dir, f"{image_name}-{mask_name}.png")
+            output_array = image_array * mask
+            if args.flip_output:
+                # flip on y-axis
+                output_array = np.flip(output_array, 1)
+                output_name = f"{image_name}-{mask_name}-flipped.png"
+            else:
+                output_name = f"{image_name}-{mask_name}.png"
+            masked_image = Image.fromarray(output_array)
+            output_path = os.path.join(args.output_dir, output_name)
             masked_image.save(output_path)
 
 
